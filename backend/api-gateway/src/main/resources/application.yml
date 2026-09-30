@@ -1,0 +1,63 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      routes:
+        - id: auth-service
+          uri: lb://AUTH-SERVICE
+          predicates:
+            - Path=/api/auth, /api/auth/**
+        - id: contractor-service
+          uri: lb://CONTRACTOR-SERVICE
+          predicates:
+            - Path=/api/contractors, /api/contractors/**
+        - id: equipment-service
+          uri: lb://EQUIPMENT-SERVICE
+          predicates:
+            - Path=/api/equipment, /api/equipment/**
+        - id: rental-service
+          uri: lb://RENTAL-SERVICE
+          predicates:
+            - Path=/api/rentals, /api/rentals/**
+        - id: dispatch-service
+          uri: lb://DISPATCH-SERVICE
+          predicates:
+            - Path=/api/dispatch, /api/dispatch/**, /api/dispatches, /api/dispatches/**
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOriginPatterns:
+              - "${CORS_ALLOWED_ORIGINS:http://localhost:5173}"
+              - "http://localhost:3000"
+              - "http://127.0.0.1:5173"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - PATCH
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+
+jwt:
+  secret: ${JWT_SECRET:BuildAssetLogisticsSuperSecretKeyForJWTAuthentication2026Enterprise}
+
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
+    org.springframework.web.reactive: INFO
+    com.buildasset.gateway: INFO

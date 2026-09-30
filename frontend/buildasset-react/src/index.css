@@ -1,0 +1,337 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  body {
+    @apply bg-slate-100/70 text-slate-900 dark:bg-slate-950 dark:text-slate-100 font-sans antialiased transition-colors duration-200 selection:bg-amber-500 selection:text-slate-950;
+    background-image: 
+      radial-gradient(at 0% 0%, rgba(245, 158, 11, 0.04) 0px, transparent 40%),
+      radial-gradient(at 100% 0%, rgba(6, 182, 212, 0.035) 0px, transparent 40%),
+      radial-gradient(at 50% 100%, rgba(245, 158, 11, 0.025) 0px, transparent 50%);
+    background-attachment: fixed;
+    margin: 0;
+    padding: 0;
+  }
+  .dark body {
+    background-image: 
+      radial-gradient(at 0% 0%, rgba(245, 158, 11, 0.05) 0px, transparent 45%),
+      radial-gradient(at 100% 0%, rgba(6, 182, 212, 0.04) 0px, transparent 45%),
+      radial-gradient(at 50% 100%, rgba(245, 158, 11, 0.03) 0px, transparent 50%);
+  }
+}
+
+/* Industrial Scrollbars */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* Enterprise Glow & Card Backlighting */
+.card-glow-amber {
+  position: relative;
+}
+.card-glow-amber::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: radial-gradient(circle at 50% 0%, rgba(245, 158, 11, 0.2), transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.card-glow-cyan {
+  position: relative;
+}
+.card-glow-cyan::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: radial-gradient(circle at 50% 0%, rgba(6, 182, 212, 0.2), transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Soft Ambient Light Behind Box - Focused spread */
+.backlight-amber {
+  position: relative;
+}
+.backlight-amber::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 75%;
+  height: 65%;
+  background: radial-gradient(ellipse at center, rgba(245, 158, 11, 0.09), transparent 65%);
+  filter: blur(20px);
+  pointer-events: none;
+  z-index: -1;
+}
+.dark .backlight-amber::after {
+  background: radial-gradient(ellipse at center, rgba(245, 158, 11, 0.14), transparent 65%);
+}
+
+.backlight-cyan {
+  position: relative;
+}
+.backlight-cyan::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 75%;
+  height: 65%;
+  background: radial-gradient(ellipse at center, rgba(6, 182, 212, 0.09), transparent 65%);
+  filter: blur(20px);
+  pointer-events: none;
+  z-index: -1;
+}
+.dark .backlight-cyan::after {
+  background: radial-gradient(ellipse at center, rgba(6, 182, 212, 0.14), transparent 65%);
+}
+
+/* Subtle Animated Gradient Mesh */
+@keyframes pulse-slow {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.05); }
+}
+
+@keyframes float-gentle {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes beam-sweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 8s ease-in-out infinite;
+}
+
+.animate-float-gentle {
+  animation: float-gentle 6s ease-in-out infinite;
+}
+
+.beam-line {
+  position: relative;
+  overflow: hidden;
+}
+.beam-line::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(245, 158, 11, 0.6), transparent);
+  animation: beam-sweep 3s ease-in-out infinite;
+}
+
+/* Interactive Mouse-Tracking Spotlight ("Lightable" Cards & Controls) */
+/* Tightened 180px spread area for crisp, precise cursor torch effect */
+.lightable {
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), 
+              box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), 
+              border-color 0.25s ease;
+}
+
+.lightable:hover {
+  box-shadow: 0 8px 20px -4px rgba(245, 158, 11, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
+}
+
+.dark .lightable {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3);
+}
+
+.dark .lightable:hover {
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.5), 0 0 16px -2px rgba(245, 158, 11, 0.15);
+}
+
+.lightable::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    180px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(245, 158, 11, 0.13) 0%,
+    rgba(245, 158, 11, 0.04) 45%,
+    transparent 70%
+  );
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+  z-index: 1;
+}
+
+.lightable:hover::before {
+  opacity: 1;
+}
+
+.dark .lightable::before {
+  background: radial-gradient(
+    180px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(245, 158, 11, 0.18) 0%,
+    rgba(245, 158, 11, 0.05) 45%,
+    transparent 70%
+  );
+}
+
+/* Color Spotlight Variants - Reduced tight spread */
+.lightable-cyan::before {
+  background: radial-gradient(
+    180px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(6, 182, 212, 0.13) 0%,
+    rgba(6, 182, 212, 0.04) 45%,
+    transparent 70%
+  );
+}
+.dark .lightable-cyan::before {
+  background: radial-gradient(
+    180px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(6, 182, 212, 0.18) 0%,
+    rgba(6, 182, 212, 0.05) 45%,
+    transparent 70%
+  );
+}
+
+.lightable-emerald::before {
+  background: radial-gradient(
+    180px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(16, 185, 129, 0.13) 0%,
+    rgba(16, 185, 129, 0.04) 45%,
+    transparent 70%
+  );
+}
+.dark .lightable-emerald::before {
+  background: radial-gradient(
+    180px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(16, 185, 129, 0.18) 0%,
+    rgba(16, 185, 129, 0.05) 45%,
+    transparent 70%
+  );
+}
+
+.lightable-orange::before {
+  background: radial-gradient(
+    180px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(249, 115, 22, 0.13) 0%,
+    rgba(249, 115, 22, 0.04) 45%,
+    transparent 70%
+  );
+}
+.dark .lightable-orange::before {
+  background: radial-gradient(
+    180px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(249, 115, 22, 0.18) 0%,
+    rgba(249, 115, 22, 0.05) 45%,
+    transparent 70%
+  );
+}
+
+.lightable-purple::before {
+  background: radial-gradient(
+    180px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(168, 85, 247, 0.13) 0%,
+    rgba(168, 85, 247, 0.04) 45%,
+    transparent 70%
+  );
+}
+.dark .lightable-purple::before {
+  background: radial-gradient(
+    180px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(168, 85, 247, 0.18) 0%,
+    rgba(168, 85, 247, 0.05) 45%,
+    transparent 70%
+  );
+}
+
+/* Lightable border sheen - tight 130px focused border brightener */
+.lightable-border {
+  position: relative;
+}
+.lightable-border::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: radial-gradient(
+    130px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(245, 158, 11, 0.8) 0%,
+    rgba(245, 158, 11, 0.25) 45%,
+    transparent 65%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+  z-index: 2;
+}
+.lightable-border:hover::after {
+  opacity: 1;
+}
+
+/* Lightable interactive buttons - focused 90px spotlight */
+.lightable-btn {
+  position: relative;
+  overflow: hidden;
+}
+.lightable-btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    90px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(255, 255, 255, 0.35) 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    transparent 75%
+  );
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+.lightable-btn:hover::after {
+  opacity: 1;
+}
+
+/* Accessibility: Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
