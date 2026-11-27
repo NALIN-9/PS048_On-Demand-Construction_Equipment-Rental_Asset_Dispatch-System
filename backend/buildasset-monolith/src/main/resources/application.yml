@@ -1,0 +1,54 @@
+server:
+  port: ${PORT:8080}
+  forward-headers-strategy: framework
+
+spring:
+  application:
+    name: buildasset-monolith
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5433/buildasset_db}
+    username: ${DATABASE_USERNAME:postgres}
+    password: ${DATABASE_PASSWORD:root}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+    open-in-view: false
+
+jwt:
+  secret: ${JWT_SECRET}
+  expiration-ms: 86400000
+
+equipment:
+  service:
+    url: ${EQUIPMENT_SERVICE_URL:http://localhost:8080/api/equipment}
+rental:
+  service:
+    url: ${RENTAL_SERVICE_URL:http://localhost:8080/api/rentals}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+
+logging:
+  level:
+    com.buildasset: INFO
+    org.springframework.security: INFO

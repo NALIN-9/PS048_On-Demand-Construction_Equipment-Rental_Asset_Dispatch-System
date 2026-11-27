@@ -30,6 +30,7 @@
         <module>rental-service</module>
         <module>dispatch-service</module>
         <module>api-gateway</module>
+        <module>buildasset-monolith</module>
     </modules>
 
     <dependencyManagement>
