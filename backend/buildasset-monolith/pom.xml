@@ -46,6 +46,7 @@
           <exclude>**/OpenApiConfig.java</exclude>
           <exclude>**/GlobalExceptionHandler.java</exclude>
           <exclude>**/*DataInitializer.java</exclude>
+          <exclude>**/SecurityConfig.java</exclude>
         </excludes></configuration>
       </plugin>
       <plugin><groupId>org.springframework.boot</groupId><artifactId>spring-boot-maven-plugin</artifactId></plugin>
