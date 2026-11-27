@@ -12,6 +12,9 @@ import {
   UserCheck,
 } from "lucide-react";
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+const IS_PRODUCTION = import.meta.env.PROD;
+
 const Profile = () => {
   const { user } = useAuth();
   const isAdmin = user?.role === "ROLE_ADMIN";
@@ -87,14 +90,14 @@ const Profile = () => {
                     <span className="text-slate-500 font-medium">Service Gateway Routing:</span>
                     <span className="font-bold text-emerald-600 dark:text-emerald-400 font-mono flex items-center gap-1">
                       <CheckCircle2 className="w-3.5 h-3.5" />
-                      http://localhost:8080
+                      {API_BASE_URL}
                     </span>
                   </div>
 
                   <div className="p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-800 flex justify-between items-center lightable lightable-border hover:scale-[1.01] transition-transform">
                     <span className="text-slate-500 font-medium">Database Multi-Schema:</span>
                     <span className="font-bold text-slate-800 dark:text-slate-200 font-mono">
-                      PostgreSQL (Port 5433)
+                      {IS_PRODUCTION ? "Managed PostgreSQL | buildasset_db" : "PostgreSQL (Port 5433) | buildasset_db"}
                     </span>
                   </div>
 

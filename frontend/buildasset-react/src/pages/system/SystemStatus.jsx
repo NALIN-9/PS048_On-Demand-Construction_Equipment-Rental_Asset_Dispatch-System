@@ -12,6 +12,9 @@ import {
   Zap,
 } from "lucide-react";
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+const IS_PRODUCTION = import.meta.env.PROD;
+
 const SystemStatus = () => {
   const [gatewayStatus, setGatewayStatus] = useState("CONFIGURED");
   const [eurekaStatus, setEurekaStatus] = useState("CONFIGURED");
@@ -29,57 +32,108 @@ const SystemStatus = () => {
   const checkGatewayHealth = async () => {
     setChecking(true);
     const updated = { ...serviceStatuses };
+    let gatewayReachable = false; // local flag — React state is async, don't read it mid-function
 
+    // Check gateway + equipment service via shared axiosClient
     try {
       const res = await axiosClient.get("/api/equipment/stats");
       if (res.status === 200) {
         setGatewayStatus("ONLINE");
         setDbStatus("ONLINE");
         updated["Equipment Service"] = "ONLINE";
+        gatewayReachable = true;
       } else {
         setGatewayStatus("DEGRADED");
+        gatewayReachable = true; // got a response, gateway is up
       }
     } catch (err) {
       if (err.response) {
+        // Got a response from server — gateway is reachable
         setGatewayStatus("ONLINE");
+        gatewayReachable = true;
+        // Equipment service may be auth-protected; treat any server response as reachable
+        if (err.response.status !== 401 && err.response.status !== 403) {
+          updated["Equipment Service"] = "DEGRADED";
+        } else {
+          updated["Equipment Service"] = "ONLINE";
+        }
       } else {
+        // No response — gateway is unreachable (network error / CORS / backend down)
         setGatewayStatus("OFFLINE");
+        updated["Equipment Service"] = "OFFLINE";
       }
     }
 
+    // Contractor service
     try {
       const contRes = await axiosClient.get("/api/contractors");
       if (contRes.status === 200) updated["Contractor Service"] = "ONLINE";
     } catch (e) {
-      if (e.response) updated["Contractor Service"] = "ONLINE";
+      if (e.response) {
+        updated["Contractor Service"] = e.response.status === 401 || e.response.status === 403
+          ? "ONLINE"
+          : "DEGRADED";
+      } else {
+        updated["Contractor Service"] = "OFFLINE";
+      }
     }
 
+    // Auth service (login endpoint returns 400 on bad input, not network error)
+    try {
+      await axiosClient.post("/api/auth/login", {});
+    } catch (e) {
+      if (e.response) {
+        updated["Auth Service"] = "ONLINE"; // server responded → auth service is up
+      } else {
+        updated["Auth Service"] = "OFFLINE";
+      }
+    }
+
+    // Rental service
     try {
       const rentRes = await axiosClient.get("/api/rentals");
       if (rentRes.status === 200) updated["Rental Service"] = "ONLINE";
     } catch (e) {
-      if (e.response) updated["Rental Service"] = "ONLINE";
+      if (e.response) {
+        updated["Rental Service"] = e.response.status === 401 || e.response.status === 403
+          ? "ONLINE"
+          : "DEGRADED";
+      } else {
+        updated["Rental Service"] = "OFFLINE";
+      }
     }
 
+    // Dispatch service
     try {
       const dispRes = await axiosClient.get("/api/dispatches");
       if (dispRes.status === 200) updated["Dispatch Service"] = "ONLINE";
     } catch (e) {
-      if (e.response) updated["Dispatch Service"] = "ONLINE";
+      if (e.response) {
+        updated["Dispatch Service"] = e.response.status === 401 || e.response.status === 403
+          ? "ONLINE"
+          : "DEGRADED";
+      } else {
+        updated["Dispatch Service"] = "OFFLINE";
+      }
     }
+
+    // Eureka — not independently reachable from frontend in production;
+    // infer reachability from gateway local flag (React state is async, can't read mid-function)
+    if (gatewayReachable) setEurekaStatus("ONLINE");
 
     setServiceStatuses(updated);
     setLastChecked(new Date().toLocaleTimeString());
     setChecking(false);
   };
 
+  // Build service definitions — environment-aware
   const services = [
     {
       name: "API Gateway",
       port: 8080,
       protocol: "Spring Cloud Gateway (Reactive Netty)",
       status: gatewayStatus,
-      basePath: "http://localhost:8080/api/*",
+      basePath: IS_PRODUCTION ? `${API_BASE_URL}/api/*` : "http://localhost:8080/api/*",
       swaggerUrl: null,
       description: "Central routing, JWT validation and token forwarding edge",
     },
@@ -88,8 +142,9 @@ const SystemStatus = () => {
       port: 8761,
       protocol: "Spring Cloud Netflix Eureka",
       status: eurekaStatus,
-      basePath: "http://localhost:8761",
+      basePath: IS_PRODUCTION ? "Internal – not publicly exposed" : "http://localhost:8761",
       swaggerUrl: null,
+      eurekaLocal: !IS_PRODUCTION,
       description: "Dynamic microservice registration and heartbeat discovery registry",
     },
     {
@@ -98,7 +153,7 @@ const SystemStatus = () => {
       protocol: "Spring Boot 3.3.3 + Spring Security + JWT",
       status: serviceStatuses["Auth Service"],
       basePath: "/api/auth/**",
-      swaggerUrl: "http://localhost:8085/swagger-ui.html",
+      swaggerUrl: IS_PRODUCTION ? null : "http://localhost:8085/swagger-ui.html",
       description: "User authentication, BCrypt hashing, and stateless JWT issuance",
     },
     {
@@ -107,7 +162,7 @@ const SystemStatus = () => {
       protocol: "Spring Boot 3.3.3 + Spring Data JPA",
       status: serviceStatuses["Contractor Service"],
       basePath: "/api/contractors/**",
-      swaggerUrl: "http://localhost:8081/swagger-ui.html",
+      swaggerUrl: IS_PRODUCTION ? null : "http://localhost:8081/swagger-ui.html",
       description: "B2B client profiles, KYC verification and credit management",
     },
     {
@@ -116,7 +171,7 @@ const SystemStatus = () => {
       protocol: "Spring Boot 3.3.3 + JPA Criteria API",
       status: serviceStatuses["Equipment Service"],
       basePath: "/api/equipment/**",
-      swaggerUrl: "http://localhost:8082/swagger-ui.html",
+      swaggerUrl: IS_PRODUCTION ? null : "http://localhost:8082/swagger-ui.html",
       description: "Heavy machinery inventory, categories, and maintenance records",
     },
     {
@@ -125,7 +180,7 @@ const SystemStatus = () => {
       protocol: "Spring Boot 3.3.3 + OpenFeign Client",
       status: serviceStatuses["Rental Service"],
       basePath: "/api/rentals/**",
-      swaggerUrl: "http://localhost:8083/swagger-ui.html",
+      swaggerUrl: IS_PRODUCTION ? null : "http://localhost:8083/swagger-ui.html",
       description: "Rental reservations, duration calculations and return billing",
     },
     {
@@ -134,7 +189,7 @@ const SystemStatus = () => {
       protocol: "Spring Boot 3.3.3 + OpenFeign Client",
       status: serviceStatuses["Dispatch Service"],
       basePath: "/api/dispatches/**",
-      swaggerUrl: "http://localhost:8084/swagger-ui.html",
+      swaggerUrl: IS_PRODUCTION ? null : "http://localhost:8084/swagger-ui.html",
       description: "Fleet logistics, driver telemetry, site delivery and return tracking",
     },
   ];
@@ -162,7 +217,9 @@ const SystemStatus = () => {
         </button>
       </div>
 
+      {/* Status Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Gateway Status */}
         <div className="p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800/90 bg-white dark:bg-slate-900/90 shadow-sm lightable lightable-border space-y-2 hover:scale-[1.01] transition-transform">
           <div className="relative z-10 space-y-2">
             <div className="flex items-center justify-between text-slate-500">
@@ -176,6 +233,8 @@ const SystemStatus = () => {
                     ? "bg-emerald-500 animate-pulse"
                     : gatewayStatus === "CONFIGURED"
                     ? "bg-amber-500"
+                    : gatewayStatus === "DEGRADED"
+                    ? "bg-orange-500"
                     : "bg-rose-500"
                 }`}
               />
@@ -183,10 +242,13 @@ const SystemStatus = () => {
                 {gatewayStatus}
               </span>
             </div>
-            <p className="text-[10px] text-slate-400 font-medium">Port :8080 | {lastChecked ? `Probed at ${lastChecked}` : "Ready to probe"}</p>
+            <p className="text-[10px] text-slate-400 font-medium break-all">
+              {IS_PRODUCTION ? API_BASE_URL : "Port :8080"} | {lastChecked ? `Probed at ${lastChecked}` : "Ready to probe"}
+            </p>
           </div>
         </div>
 
+        {/* Service Discovery */}
         <div className="p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800/90 bg-white dark:bg-slate-900/90 shadow-sm lightable lightable-border space-y-2 hover:scale-[1.01] transition-transform">
           <div className="relative z-10 space-y-2">
             <div className="flex items-center justify-between text-slate-500">
@@ -199,17 +261,24 @@ const SystemStatus = () => {
                 {eurekaStatus === "ONLINE" ? "EUREKA ONLINE" : "CONFIGURED :8761"}
               </span>
             </div>
-            <a
-              href="http://localhost:8761"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[10px] text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1 font-semibold"
-            >
-              Open Registry Dashboard :8761 <ExternalLink className="w-3 h-3" />
-            </a>
+            {IS_PRODUCTION ? (
+              <p className="text-[10px] text-slate-400 font-medium">
+                Internal service – not publicly exposed
+              </p>
+            ) : (
+              <a
+                href="http://localhost:8761"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[10px] text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1 font-semibold"
+              >
+                Open Registry Dashboard :8761 <ExternalLink className="w-3 h-3" />
+              </a>
+            )}
           </div>
         </div>
 
+        {/* Database */}
         <div className="p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800/90 bg-white dark:bg-slate-900/90 shadow-sm lightable lightable-border space-y-2 hover:scale-[1.01] transition-transform">
           <div className="relative z-10 space-y-2">
             <div className="flex items-center justify-between text-slate-500">
@@ -222,10 +291,13 @@ const SystemStatus = () => {
                 {dbStatus}
               </span>
             </div>
-            <p className="text-[10px] text-slate-400 font-mono">Port :5433 | DB: buildasset_db</p>
+            <p className="text-[10px] text-slate-400 font-mono">
+              {IS_PRODUCTION ? "Managed PostgreSQL | buildasset_db" : "Port :5433 | DB: buildasset_db"}
+            </p>
           </div>
         </div>
 
+        {/* Auth Protocol */}
         <div className="p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800/90 bg-white dark:bg-slate-900/90 shadow-sm lightable lightable-border space-y-2 hover:scale-[1.01] transition-transform">
           <div className="relative z-10 space-y-2">
             <div className="flex items-center justify-between text-slate-500">
@@ -243,6 +315,7 @@ const SystemStatus = () => {
         </div>
       </div>
 
+      {/* Microservice Table */}
       <div className="p-6 sm:p-8 rounded-3xl border border-slate-200/90 dark:border-slate-800/90 bg-white dark:bg-slate-900/90 shadow-sm lightable lightable-border space-y-4">
         <div className="relative z-10">
           <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
@@ -250,7 +323,9 @@ const SystemStatus = () => {
             Microservice Architecture & OpenAPI Documentation
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Direct Swagger UI interfaces and architectural contracts for all 5 business services
+            {IS_PRODUCTION
+              ? "Internal service topology and status. Swagger links are available in local development only."
+              : "Direct Swagger UI interfaces and architectural contracts for all 5 business services"}
           </p>
         </div>
 
@@ -274,7 +349,11 @@ const SystemStatus = () => {
                     <div className="text-[10px] text-slate-500 font-medium">{svc.description}</div>
                   </td>
                   <td className="py-3.5 px-4 font-mono font-bold text-amber-500">
-                    :{svc.port}
+                    {IS_PRODUCTION && svc.name !== "API Gateway" ? (
+                      <span className="text-slate-400 font-mono text-[11px]">Internal</span>
+                    ) : (
+                      `:${svc.port}`
+                    )}
                   </td>
                   <td className="py-3.5 px-4 font-mono text-[11px] text-slate-600 dark:text-slate-300">
                     {svc.basePath}
@@ -289,6 +368,8 @@ const SystemStatus = () => {
                           ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
                           : svc.status === "CONFIGURED"
                           ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+                          : svc.status === "DEGRADED"
+                          ? "bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/20"
                           : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20"
                       }`}
                     >
@@ -298,6 +379,8 @@ const SystemStatus = () => {
                             ? "bg-emerald-500"
                             : svc.status === "CONFIGURED"
                             ? "bg-amber-500"
+                            : svc.status === "DEGRADED"
+                            ? "bg-orange-500"
                             : "bg-rose-500"
                         }`}
                       />
@@ -315,6 +398,8 @@ const SystemStatus = () => {
                         <span>Open Swagger</span>
                         <ExternalLink className="w-3 h-3 text-amber-500" />
                       </a>
+                    ) : IS_PRODUCTION && svc.name !== "API Gateway" && svc.name !== "Eureka Service Discovery" ? (
+                      <span className="text-slate-400 text-[11px]">Internal</span>
                     ) : (
                       <span className="text-slate-400 text-[11px]">N/A</span>
                     )}
@@ -326,6 +411,7 @@ const SystemStatus = () => {
         </div>
       </div>
 
+      {/* Bottom Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="p-6 rounded-3xl border border-slate-200/90 dark:border-slate-800/90 bg-white dark:bg-slate-900/90 shadow-sm lightable lightable-border space-y-3">
           <div className="relative z-10 space-y-3">
@@ -380,6 +466,11 @@ const SystemStatus = () => {
               <li>Paste the JWT token into the <code className="font-mono text-amber-500">bearerAuth</code> field (without 'Bearer ' prefix) and click Authorize</li>
               <li>Execute protected endpoints directly with authenticated role permissions</li>
             </ol>
+            {IS_PRODUCTION && (
+              <p className="text-[11px] text-slate-400 mt-2">
+                Note: Swagger UIs are only accessible in local development environments. In production, all API access is via the secured API Gateway.
+              </p>
+            )}
           </div>
         </div>
       </div>
