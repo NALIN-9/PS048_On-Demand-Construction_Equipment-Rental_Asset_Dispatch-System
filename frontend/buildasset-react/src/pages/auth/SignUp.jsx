@@ -247,7 +247,6 @@ const SignUp = () => {
                 >
                   <option value="ROLE_CONTRACTOR">ROLE_CONTRACTOR (Registered Contractor)</option>
                   <option value="ROLE_OPERATOR">ROLE_OPERATOR (Equipment Operator)</option>
-                  <option value="ROLE_ADMIN">ROLE_ADMIN (Platform Administrator)</option>
                 </select>
               </div>
             </div>
