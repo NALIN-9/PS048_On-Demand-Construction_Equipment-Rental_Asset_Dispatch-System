@@ -1,0 +1,195 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: buildasset-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: buildasset_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    networks:
+      - buildasset-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d buildasset_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  eureka-server:
+    build:
+      context: ./backend/eureka-server
+      dockerfile: Dockerfile
+    container_name: buildasset-eureka
+    restart: always
+    ports:
+      - "8761:8761"
+    environment:
+      SERVER_PORT: 8761
+      EUREKA_CLIENT_REGISTER_WITH_EUREKA: "false"
+      EUREKA_CLIENT_FETCH_REGISTRY: "false"
+    networks:
+      - buildasset-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8761/eureka/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  auth-service:
+    build:
+      context: ./backend/auth-service
+      dockerfile: Dockerfile
+    container_name: buildasset-auth
+    restart: always
+    ports:
+      - "8085:8085"
+    environment:
+      SERVER_PORT: 8085
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/buildasset_db?currentSchema=auth_schema
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: root
+      EUREKA_SERVER_URL: http://eureka-server:8761/eureka/
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - buildasset-network
+
+  contractor-service:
+    build:
+      context: ./backend/contractor-service
+      dockerfile: Dockerfile
+    container_name: buildasset-contractor
+    restart: always
+    ports:
+      - "8081:8081"
+    environment:
+      SERVER_PORT: 8081
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/buildasset_db?currentSchema=contractor_schema
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: root
+      EUREKA_SERVER_URL: http://eureka-server:8761/eureka/
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - buildasset-network
+
+  equipment-service:
+    build:
+      context: ./backend/equipment-service
+      dockerfile: Dockerfile
+    container_name: buildasset-equipment
+    restart: always
+    ports:
+      - "8082:8082"
+    environment:
+      SERVER_PORT: 8082
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/buildasset_db?currentSchema=equipment_schema
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: root
+      EUREKA_SERVER_URL: http://eureka-server:8761/eureka/
+      RENTAL_SERVICE_URL: http://rental-service:8083/api/rentals
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - buildasset-network
+
+  rental-service:
+    build:
+      context: ./backend/rental-service
+      dockerfile: Dockerfile
+    container_name: buildasset-rental
+    restart: always
+    ports:
+      - "8083:8083"
+    environment:
+      SERVER_PORT: 8083
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/buildasset_db?currentSchema=rental_schema
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: root
+      EUREKA_SERVER_URL: http://eureka-server:8761/eureka/
+      EQUIPMENT_SERVICE_URL: http://equipment-service:8082/api/equipment
+      CONTRACTOR_SERVICE_URL: http://contractor-service:8081/api/contractors
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - buildasset-network
+
+  dispatch-service:
+    build:
+      context: ./backend/dispatch-service
+      dockerfile: Dockerfile
+    container_name: buildasset-dispatch
+    restart: always
+    ports:
+      - "8084:8084"
+    environment:
+      SERVER_PORT: 8084
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/buildasset_db?currentSchema=dispatch_schema
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: root
+      EUREKA_SERVER_URL: http://eureka-server:8761/eureka/
+      RENTAL_SERVICE_URL: http://rental-service:8083/api/rentals
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - buildasset-network
+
+  api-gateway:
+    build:
+      context: ./backend/api-gateway
+      dockerfile: Dockerfile
+    container_name: buildasset-gateway
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      SERVER_PORT: 8080
+      EUREKA_SERVER_URL: http://eureka-server:8761/eureka/
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - buildasset-network
+
+  frontend:
+    build:
+      context: ./frontend/buildasset-react
+      dockerfile: Dockerfile
+    container_name: buildasset-frontend
+    restart: always
+    ports:
+      - "80:80"
+      - "5173:80"
+    depends_on:
+      - api-gateway
+    networks:
+      - buildasset-network
+
+networks:
+  buildasset-network:
+    driver: bridge
+
+volumes:
+  pgdata:

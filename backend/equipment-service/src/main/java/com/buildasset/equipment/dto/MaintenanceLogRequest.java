@@ -15,7 +15,6 @@ public class MaintenanceLogRequest {
 
     private LocalDate completedDate;
 
-    @NotBlank(message = "Description is required")
     private String description;
 
     private String status = "SCHEDULED";

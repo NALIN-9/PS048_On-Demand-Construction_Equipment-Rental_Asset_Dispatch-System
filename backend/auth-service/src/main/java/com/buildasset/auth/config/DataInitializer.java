@@ -33,12 +33,9 @@ public class DataInitializer implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) {
-        log.info("Initializing permanent BuildAsset Logistics users and purging obsolete business records...");
+        log.info("Initializing permanent BuildAsset Logistics users...");
 
-        // 1. Purge obsolete business/test data from PostgreSQL schemas while keeping schemas and tables intact
-        cleanBusinessData();
-
-        // 2. Ensure the 3 permanent users exist with their exact credentials, roles and hashed passwords
+        // 1. Ensure the 3 permanent users exist with their exact credentials, roles and hashed passwords
         seedOrUpdateUser("admin@gmail.com", "admin@gmail.com", "admin@123", "System Administrator", "ROLE_ADMIN");
         seedOrUpdateUser("contractor@gmail.com", "contractor@gmail.com", "contractor@123", "Contractor Operations", "ROLE_CONTRACTOR");
         seedOrUpdateUser("operator@gmail.com", "operator@gmail.com", "operator@123", "Fleet & Yard Operator", "ROLE_OPERATOR");

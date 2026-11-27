@@ -126,6 +126,15 @@ public class EquipmentService {
         return mapToResponse(updated);
     }
 
+    @Transactional
+    public EquipmentResponse updateEquipmentImage(Long id, String imageUrl) {
+        Equipment equipment = equipmentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Equipment not found with ID: " + id));
+        equipment.setImageUrl(imageUrl);
+        Equipment updated = equipmentRepository.save(equipment);
+        return mapToResponse(updated);
+    }
+
     public EquipmentStatsResponse getEquipmentStats() {
         long total = equipmentRepository.count();
         long available = equipmentRepository.countByStatus("AVAILABLE");
@@ -150,15 +159,27 @@ public class EquipmentService {
         log.setMaintenanceType(request.getMaintenanceType());
         log.setScheduledDate(request.getScheduledDate());
         log.setCompletedDate(request.getCompletedDate());
-        log.setDescription(request.getDescription());
+        String desc = request.getDescription();
+        if (desc == null || desc.trim().isEmpty()) {
+            String readableType = request.getMaintenanceType() != null
+                    ? request.getMaintenanceType().replace("_", " ")
+                    : "Routine Service";
+            desc = readableType + " scheduled for asset";
+        }
+        log.setDescription(desc.trim());
         log.setStatus(request.getStatus() != null ? request.getStatus().toUpperCase() : "SCHEDULED");
-        log.setCost(request.getCost());
-        log.setTechnicianName(request.getTechnicianName());
+        log.setCost(request.getCost() != null ? request.getCost() : java.math.BigDecimal.ZERO);
+        log.setTechnicianName(request.getTechnicianName() != null && !request.getTechnicianName().isBlank()
+                ? request.getTechnicianName().trim()
+                : "Internal Fleet Mechanic");
 
         MaintenanceLog saved = maintenanceLogRepository.save(log);
 
-        // Immediate transition to MAINTENANCE
+        // Immediate transition to MAINTENANCE and update nextMaintenanceDate
         equipment.setStatus("MAINTENANCE");
+        if (request.getScheduledDate() != null) {
+            equipment.setNextMaintenanceDate(request.getScheduledDate());
+        }
         equipmentRepository.save(equipment);
 
         return mapToLogResponse(saved);
@@ -311,6 +332,11 @@ public class EquipmentService {
                 if (rList != null && !rList.isEmpty()) {
                     java.util.Map<String, Object> rMap = rList.stream()
                             .filter(m -> {
+                                Object eqIdObj = m.get("equipmentId");
+                                Long mEqId = eqIdObj != null ? ((Number) eqIdObj).longValue() : null;
+                                if (mEqId == null || !mEqId.equals(e.getId())) {
+                                    return false;
+                                }
                                 String st = (String) m.get("status");
                                 return "CONFIRMED".equalsIgnoreCase(st) || "ACTIVE".equalsIgnoreCase(st) || "PENDING".equalsIgnoreCase(st);
                             })
@@ -416,11 +442,10 @@ public class EquipmentService {
                 List<?> rawDRows = entityManager.createNativeQuery(
                         "SELECT d.id, d.status, d.operator_name, d.carrier_name, d.job_site " +
                         "FROM dispatch_schema.dispatches d " +
-                        "WHERE d.rental_id = :rentalId OR (d.equipment_id = :equipmentId AND d.status NOT IN ('RETURNED', 'CANCELLED')) " +
-                        "ORDER BY CASE WHEN d.status NOT IN ('RETURNED', 'CANCELLED') THEN 1 ELSE 2 END, d.created_at DESC " +
+                        "WHERE d.equipment_id = :equipmentId AND d.status NOT IN ('RETURNED', 'CANCELLED') " +
+                        "ORDER BY d.created_at DESC " +
                         "LIMIT 1"
-                ).setParameter("rentalId", res.getCurrentRentalId() != null ? res.getCurrentRentalId() : -1L)
-                 .setParameter("equipmentId", e.getId()).getResultList();
+                ).setParameter("equipmentId", e.getId()).getResultList();
 
                 if (!rawDRows.isEmpty()) {
                     Object firstItem = rawDRows.get(0);

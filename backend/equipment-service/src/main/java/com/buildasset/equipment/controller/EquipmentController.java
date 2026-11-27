@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/equipment")
@@ -102,6 +103,18 @@ public class EquipmentController {
             @PathVariable("id") Long id,
             @RequestParam(name = "status") String status) {
         return ResponseEntity.ok(equipmentService.updateEquipmentStatus(id, status));
+    }
+
+    @PatchMapping("/{id}/image")
+    @Operation(summary = "Update Equipment Image", description = "Update only the image/photo gallery URL of a machinery asset without requiring a full payload")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Image updated successfully"),
+            @ApiResponse(responseCode = "404", description = "Equipment not found")
+    })
+    public ResponseEntity<EquipmentResponse> updateEquipmentImage(
+            @PathVariable("id") Long id,
+            @RequestBody Map<String, String> body) {
+        return ResponseEntity.ok(equipmentService.updateEquipmentImage(id, body.get("imageUrl")));
     }
 
     @GetMapping("/stats")

@@ -83,6 +83,7 @@ const EquipmentDetails = () => {
     cost: "",
   });
   const [schedulingMaint, setSchedulingMaint] = useState(false);
+  const [maintError, setMaintError] = useState("");
 
   // Delete Modal
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -135,13 +136,19 @@ const EquipmentDetails = () => {
 
   const handleScheduleMaintenance = async (e) => {
     e.preventDefault();
+    setMaintError("");
     try {
       setSchedulingMaint(true);
+      const readableType = maintForm.maintenanceType
+        ? maintForm.maintenanceType.replace(/_/g, " ")
+        : "Routine Service";
+      const cleanDescription = maintForm.description?.trim() || `${readableType} scheduled for equipment`;
+
       await axiosClient.post(`/api/equipment/${id}/maintenance`, {
-        maintenanceType: maintForm.maintenanceType,
-        scheduledDate: maintForm.scheduledDate,
-        description: maintForm.description,
-        cost: maintForm.cost ? parseFloat(maintForm.cost) : null,
+        maintenanceType: maintForm.maintenanceType || "ROUTINE_SERVICE",
+        scheduledDate: maintForm.scheduledDate || new Date().toISOString().split("T")[0],
+        description: cleanDescription,
+        cost: maintForm.cost ? parseFloat(maintForm.cost) : 0,
       });
 
       setNotification({
@@ -149,6 +156,7 @@ const EquipmentDetails = () => {
         message: "Maintenance service logged. Machinery transitioned to MAINTENANCE.",
       });
       setMaintModalOpen(false);
+      setMaintError("");
       setMaintForm({
         maintenanceType: "ROUTINE_SERVICE",
         scheduledDate: new Date().toISOString().split("T")[0],
@@ -157,9 +165,11 @@ const EquipmentDetails = () => {
       });
       fetchEquipmentDetails();
     } catch (err) {
+      const errMsg = err.response?.data?.message || err.message || "Failed to schedule maintenance.";
+      setMaintError(errMsg);
       setNotification({
         type: "error",
-        message: err.response?.data?.message || "Failed to schedule maintenance.",
+        message: errMsg,
       });
     } finally {
       setSchedulingMaint(false);
@@ -280,22 +290,7 @@ const EquipmentDetails = () => {
   const handleUpdatePhoto = async (url) => {
     try {
       setUpdatingPhoto(true);
-      const payload = {
-        equipmentCode: equipment.equipmentCode,
-        name: equipment.name,
-        category: equipment.category || "Excavator",
-        manufacturer: equipment.manufacturer || "Caterpillar",
-        model: equipment.model || "Standard",
-        yearOfManufacture: equipment.yearOfManufacture
-          ? parseInt(equipment.yearOfManufacture, 10)
-          : new Date().getFullYear(),
-        dailyRate: equipment.dailyRate != null ? parseFloat(equipment.dailyRate) : 1000,
-        status: equipment.status || "AVAILABLE",
-        location: equipment.location || "North Yard",
-        description: equipment.description || "",
-        imageUrl: url,
-      };
-      const response = await axiosClient.put(`/api/equipment/${equipment.id}`, payload);
+      const response = await axiosClient.patch(`/api/equipment/${equipment.id}/image`, { imageUrl: url });
       setEquipment(response.data || { ...equipment, imageUrl: url });
       setNotification({
         type: "success",
@@ -313,6 +308,7 @@ const EquipmentDetails = () => {
       setUpdatingPhoto(false);
     }
   };
+
 
   return (
     <div className="space-y-6">
@@ -825,17 +821,29 @@ const EquipmentDetails = () => {
       {/* Schedule Maintenance Modal */}
       <Modal
         isOpen={maintModalOpen}
-        onClose={() => setMaintModalOpen(false)}
+        onClose={() => {
+          setMaintModalOpen(false);
+          setMaintError("");
+        }}
         title="Schedule Machinery Maintenance"
       >
         <form onSubmit={handleScheduleMaintenance} className="space-y-4">
+          {maintError && (
+            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-semibold">
+              {maintError}
+            </div>
+          )}
+
           <div>
             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
               Service Type
             </label>
             <select
               value={maintForm.maintenanceType}
-              onChange={(e) => setMaintForm({ ...maintForm, maintenanceType: e.target.value })}
+              onChange={(e) => {
+                setMaintError("");
+                setMaintForm({ ...maintForm, maintenanceType: e.target.value });
+              }}
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-800 dark:text-slate-200"
             >
               <option value="ROUTINE_SERVICE">Routine Preventative Service</option>
@@ -854,7 +862,10 @@ const EquipmentDetails = () => {
               type="date"
               required
               value={maintForm.scheduledDate}
-              onChange={(e) => setMaintForm({ ...maintForm, scheduledDate: e.target.value })}
+              onChange={(e) => {
+                setMaintError("");
+                setMaintForm({ ...maintForm, scheduledDate: e.target.value });
+              }}
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-800 dark:text-slate-200"
             />
           </div>
@@ -868,39 +879,51 @@ const EquipmentDetails = () => {
               min="0"
               step="0.01"
               value={maintForm.cost}
-              onChange={(e) => setMaintForm({ ...maintForm, cost: e.target.value })}
+              onChange={(e) => {
+                setMaintError("");
+                setMaintForm({ ...maintForm, cost: e.target.value });
+              }}
               placeholder="e.g. 5000.00"
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-800 dark:text-slate-200"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Notes & Description
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                Notes & Description
+              </label>
+              <span className="text-[10px] text-slate-400">Optional</span>
+            </div>
             <textarea
               rows="3"
               value={maintForm.description}
-              onChange={(e) => setMaintForm({ ...maintForm, description: e.target.value })}
-              placeholder="Describe maintenance scope..."
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-800 dark:text-slate-200"
+              onChange={(e) => {
+                setMaintError("");
+                setMaintForm({ ...maintForm, description: e.target.value });
+              }}
+              placeholder="Describe maintenance scope (auto-filled if left empty)..."
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400"
             />
           </div>
 
           <div className="flex justify-end gap-3 pt-3">
             <button
               type="button"
-              onClick={() => setMaintModalOpen(false)}
-              className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+              onClick={() => {
+                setMaintModalOpen(false);
+                setMaintError("");
+              }}
+              className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={schedulingMaint}
-              className="px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-400 text-slate-950 text-xs font-bold shadow-md disabled:opacity-50"
+              className="px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-400 text-slate-950 text-xs font-bold shadow-md disabled:opacity-50 cursor-pointer"
             >
-              {schedulingMaint ? "Saving..." : "Schedule Service"}
+              {schedulingMaint ? "Scheduling..." : "Schedule Service"}
             </button>
           </div>
         </form>
