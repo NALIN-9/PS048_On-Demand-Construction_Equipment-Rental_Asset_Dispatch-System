@@ -11,7 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @ConditionalOnProperty(
-        name = "app.bootstrap-users.enabled",
+        name = "APP_BOOTSTRAP_USERS_ENABLED",
         havingValue = "true"
 )
 public class DefaultUserSeeder implements CommandLineRunner {
@@ -19,13 +19,18 @@ public class DefaultUserSeeder implements CommandLineRunner {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-    @Value("${app.bootstrap-users.admin-password:}")
+    /*
+     * Bind directly to the exact Render environment variable names.
+     * The uppercase placeholders avoid ambiguity in relaxed environment
+     * variable binding for the nested app.bootstrap-users.* property names.
+     */
+    @Value("${APP_BOOTSTRAP_ADMIN_PASSWORD:}")
     private String adminPassword;
 
-    @Value("${app.bootstrap-users.contractor-password:}")
+    @Value("${APP_BOOTSTRAP_CONTRACTOR_PASSWORD:}")
     private String contractorPassword;
 
-    @Value("${app.bootstrap-users.operator-password:}")
+    @Value("${APP_BOOTSTRAP_OPERATOR_PASSWORD:}")
     private String operatorPassword;
 
     public DefaultUserSeeder(
