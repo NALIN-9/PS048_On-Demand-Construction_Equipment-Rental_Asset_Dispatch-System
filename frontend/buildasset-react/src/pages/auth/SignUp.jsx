@@ -27,6 +27,7 @@ const SignUp = () => {
     fullName: "",
     email: "",
     role: "ROLE_CONTRACTOR",
+    adminRegistrationKey: "",
     companyName: "",
     phone: "",
   });
@@ -86,6 +87,7 @@ const SignUp = () => {
         password: formData.password,
         confirmPassword: formData.confirmPassword,
         role: formData.role,
+        adminRegistrationKey: formData.adminRegistrationKey,
       };
 
       const result = await register(payload);
@@ -247,9 +249,31 @@ const SignUp = () => {
                 >
                   <option value="ROLE_CONTRACTOR">ROLE_CONTRACTOR (Registered Contractor)</option>
                   <option value="ROLE_OPERATOR">ROLE_OPERATOR (Equipment Operator)</option>
+                  <option value="ROLE_ADMIN">ROLE_ADMIN (Administrator - registration key required)</option>
                 </select>
               </div>
             </div>
+
+            {formData.role === "ROLE_ADMIN" && (
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Administrator Registration Key <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="password"
+                  name="adminRegistrationKey"
+                  required
+                  value={formData.adminRegistrationKey}
+                  onChange={handleChange}
+                  autoComplete="off"
+                  placeholder="Enter the key provided by the system administrator"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-amber-500/50"
+                />
+                <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                  Administrator registration requires an authorized key.
+                </p>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
