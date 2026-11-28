@@ -31,6 +31,7 @@ public class RegisterRequest {
     private String confirmPassword;
 
     private String role;
+    private String adminRegistrationKey;
 
     public RegisterRequest() {
     }
@@ -41,6 +42,14 @@ public class RegisterRequest {
 
     public void setRole(String role) {
         this.role = role;
+    }
+
+    public String getAdminRegistrationKey() {
+        return adminRegistrationKey;
+    }
+
+    public void setAdminRegistrationKey(String adminRegistrationKey) {
+        this.adminRegistrationKey = adminRegistrationKey;
     }
 
     public String getCompanyName() {
